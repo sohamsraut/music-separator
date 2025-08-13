@@ -1,10 +1,14 @@
 # server-side code
 import os
 import uuid
+
+# fastapi for webserver
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+# spleeter for music separation
 from spleeter.separator import Separator
 
 # app
@@ -40,27 +44,29 @@ async def separate_audio(
     file: UploadFile = File(...),
     stems: int = Form(4)
 ):
-    # Generate a unique ID for this separation session to avoid collisions
+    # generates unique id for given music file on server filesystem
     session_id = str(uuid.uuid4())
     session_dir = os.path.join(BASE_STEMS_DIR, session_id)
     os.makedirs(session_dir, exist_ok=True)
 
+    # writes music file to server
     input_path = os.path.join(session_dir, file.filename)
     with open(input_path, "wb") as f:
         f.write(await file.read())
 
+    # runs spleeter model with given number of stems
     model_name = f"spleeter:{stems}stems"
     separator = Separator(model_name)
     separator.separate_to_file(input_path, session_dir)
 
-    # The separated stems will be in a folder named after the input file (without extension)
+    # separated stems will be in a folder named after the input file
     song_name = os.path.splitext(file.filename)[0]
     stems_folder = os.path.join(session_dir, song_name)
 
     if not os.path.exists(stems_folder):
         return JSONResponse({"error": "Separation failed."}, status_code=500)
 
-    # List WAV files and build URLs
+    # list wav files to build urls
     stems_files = []
     for filename in os.listdir(stems_folder):
         if filename.endswith(".wav"):
