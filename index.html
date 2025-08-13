@@ -31,87 +31,87 @@
     <div id="players"></div>
 
     <script>
-        let stemAudios = []; // store all audio elements
+      async function uploadFile() {
+          const file = document.getElementById('fileInput').files[0];
+          const stems = document.getElementById('stems').value;
+          const playersDiv = document.getElementById('players');
+          playersDiv.innerHTML = '';
+          document.getElementById('status').innerText = '';
 
-        async function uploadFile() {
-            const file = document.getElementById('fileInput').files[0];
-            const stems = document.getElementById('stems').value;
-            const playersDiv = document.getElementById('players');
-            const controlsDiv = document.getElementById('controls');
-            playersDiv.innerHTML = '';
-            stemAudios = [];
-            controlsDiv.style.display = "none";
-            document.getElementById('status').innerText = '';
+          if (!file) {
+              alert("Please choose a file.");
+              return;
+          }
 
-            if (!file) {
-                alert("Please choose a file.");
-                return;
-            }
+          document.getElementById('status').innerText = "Processing... Please wait.";
 
-            document.getElementById('status').innerText = "Processing... Please wait.";
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("stems", stems);
 
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("stems", stems);
+          const response = await fetch("http://127.0.0.1:8000/separate", {
+              method: "POST",
+              body: formData
+          });
 
-            const response = await fetch("http://127.0.0.1:8000/separate", {
-                method: "POST",
-                body: formData
-            });
+          if (response.ok && response.status === 200) {
+              const data = await response.json();
+              if (data.error) {
+                  document.getElementById('status').innerText = "Error: " + data.error;
+                  return;
+              }
+              document.getElementById('status').innerText = "Separation complete!";
 
-            if (response.ok && response.status === 200) {
-                const data = await response.json();
-                if (data.error) {
-                    document.getElementById('status').innerText = "Error: " + data.error;
-                    return;
-                }
-                document.getElementById('status').innerText = "Separation complete! Play the stems below:";
+              // Create Play All button
+              const playAllBtn = document.createElement('button');
+              playAllBtn.innerText = "▶ Play All";
+              playAllBtn.onclick = () => {
+                  const audios = document.querySelectorAll('#players audio');
+                  audios.forEach(a => {
+                      a.currentTime = 0; // start from beginning
+                      a.play();
+                  });
+              };
+              playersDiv.appendChild(playAllBtn);
 
-                data.stems.forEach(stem => {
-                    const container = document.createElement('div');
+              // Create Pause All button
+              const pauseAllBtn = document.createElement('button');
+              pauseAllBtn.innerText = "⏸ Pause All";
+              pauseAllBtn.onclick = () => {
+                  const audios = document.querySelectorAll('#players audio');
+                  audios.forEach(a => a.pause());
+              };
+              playersDiv.appendChild(pauseAllBtn);
 
-                    const label = document.createElement('p');
-                    label.innerText = stem.name;
+              // Add each stem with audio + download
+              data.stems.forEach(stem => {
+                  const container = document.createElement('div');
 
-                    const audio = document.createElement('audio');
-                    audio.controls = true;
-                    audio.src = stem.url;
+                  const label = document.createElement('p');
+                  label.innerText = stem.name;
 
-                    const downloadBtn = document.createElement('a');
-                    downloadBtn.href = stem.url;
-                    downloadBtn.download = stem.name + ".wav";
-                    downloadBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M5 20h14v-2H5v2zM12 2v12l4-4h-3V2h-2v8H8l4 4z"/>
-                        </svg>
-                    `;
-                    downloadBtn.style.marginLeft = "10px";
-                    downloadBtn.style.textDecoration = "none";
-                    downloadBtn.style.cursor = "pointer";
+                  const audio = document.createElement('audio');
+                  audio.controls = true;
+                  audio.src = stem.url;
 
-                    container.appendChild(label);
-                    container.appendChild(audio);
-                    container.appendChild(downloadBtn);
-                    playersDiv.appendChild(container);
-                });
+                  const downloadBtn = document.createElement('a');
+                  downloadBtn.href = stem.url;
+                  downloadBtn.download = stem.name + ".wav";
+                  downloadBtn.innerHTML = "⬇️";
+                  downloadBtn.title = "Download";
+                  downloadBtn.style.marginLeft = "10px";
+                  downloadBtn.style.fontSize = "20px";
+                  downloadBtn.style.cursor = "pointer";
 
-                // Show play controls
-                controlsDiv.style.display = "block";
-            } else {
-                document.getElementById('status').innerText = "Error during processing.";
-            }
-        }
-
-        document.getElementById("play-all").addEventListener("click", () => {
-            stemAudios.forEach(audio => {
-                audio.audio.currentTime = 0;
-                audio.audio.play();
-            });
-        });
-
-        document.getElementById("pause-all").addEventListener("click", () => {
-            stemAudios.forEach(audio => audio.pause());
-        });
+                  container.appendChild(label);
+                  container.appendChild(audio);
+                  container.appendChild(downloadBtn);
+                  playersDiv.appendChild(container);
+              });
+          } else {
+              document.getElementById('status').innerText = "Error during processing.";
+          }
+      }
     </script>
   </body>
 </html>
