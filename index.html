@@ -43,7 +43,7 @@
                 body: formData
             });
 
-            if (response.ok) {
+            if (response.ok && response.status === 200) {
                 const data = await response.json();
                 if (data.error) {
                     document.getElementById('status').innerText = "Error: " + data.error;
