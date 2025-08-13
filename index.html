@@ -1,0 +1,72 @@
+<!-- Client Side Code -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Music Separator</title>
+  </head>
+  <body>
+    <h1>Upload a song here</h1>
+    <input type="file" id="fileInput"><br><br>
+
+    <label for="stems">Number of stems:</label>
+    <select id="stems">
+        <option value="2">2 (Vocals + Accompaniment)</option>
+        <option value="4" selected>4 (Vocals + Drums + Bass + Other)</option>
+        <option value="5">5 (Vocals + Drums + Bass + Piano + Other)</option>
+    </select><br><br>
+
+    <button onclick="uploadFile()">Separate</button>
+    <p id="status"></p>
+    <div id="players"></div>
+
+    <script>
+        async function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
+            const stems = document.getElementById('stems').value;
+            const playersDiv = document.getElementById('players');
+            playersDiv.innerHTML = '';
+            document.getElementById('status').innerText = '';
+
+            if (!file) {
+                alert("Please choose a file.");
+                return;
+            }
+
+            document.getElementById('status').innerText = "Processing... Please wait.";
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("stems", stems);
+
+            const response = await fetch("http://127.0.0.1:8000/separate", {
+                method: "POST",
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.error) {
+                    document.getElementById('status').innerText = "Error: " + data.error;
+                    return;
+                }
+                document.getElementById('status').innerText = "Separation complete! Play the stems below:";
+
+                data.stems.forEach(stem => {
+                    const container = document.createElement('div');
+                    const label = document.createElement('p');
+                    label.innerText = stem.name;
+                    const audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = stem.url;
+                    container.appendChild(label);
+                    container.appendChild(audio);
+                    playersDiv.appendChild(container);
+                });
+            } else {
+                document.getElementById('status').innerText = "Error during processing.";
+            }
+        }
+    </script>
+
+  </body>
+</html>
