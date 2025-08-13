@@ -40,22 +40,35 @@ async def separate_audio(
     file: UploadFile = File(...),
     stems: int = Form(4)
 ):
-  # Generate a unique ID for this separation session to avoid collisions
-  session_id = str(uuid.uuid4())
-  session_dir = os.path.join(BASE_STEMS_DIR, session_id)
-  os.makedirs(session_dir, exist_ok=True)
+    # Generate a unique ID for this separation session to avoid collisions
+    session_id = str(uuid.uuid4())
+    session_dir = os.path.join(BASE_STEMS_DIR, session_id)
+    os.makedirs(session_dir, exist_ok=True)
 
-  input_path = os.path.join(session_dir, file.filename)
-  with open(input_path, "wb") as f:
-      f.write(await file.read())
+    input_path = os.path.join(session_dir, file.filename)
+    with open(input_path, "wb") as f:
+        f.write(await file.read())
 
-  model_name = f"spleeter:{stems}stems"
-  separator = Separator(model_name)
-  separator.separate_to_file(input_path, session_dir)
+    model_name = f"spleeter:{stems}stems"
+    separator = Separator(model_name)
+    separator.separate_to_file(input_path, session_dir)
 
-  # The separated stems will be in a folder named after the input file (without extension)
-  song_name = os.path.splitext(file.filename)[0]
-  stems_folder = os.path.join(session_dir, song_name)
+    # The separated stems will be in a folder named after the input file (without extension)
+    song_name = os.path.splitext(file.filename)[0]
+    stems_folder = os.path.join(session_dir, song_name)
 
-  if not os.path.exists(stems_folder):
-      return JSONResponse({"error": "Separation failed."}, status_code=500)
+    if not os.path.exists(stems_folder):
+        return JSONResponse({"error": "Separation failed."}, status_code=500)
+
+    # List WAV files and build URLs
+    stems_files = []
+    for filename in os.listdir(stems_folder):
+        if filename.endswith(".wav"):
+            url_path = f"./stems/{session_id}/{song_name}/{filename}"
+            # url_path = url_path.replace("/", "/")  # fix slashes for URLs
+            stems_files.append({
+                "name": os.path.splitext(filename)[0],
+                "url": url_path
+            })
+
+    return {"stems": stems_files}
